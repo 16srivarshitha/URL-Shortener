@@ -25,19 +25,27 @@ class UrlController {
   static async redirectToOriginal(req, res, next) {
     try {
       const { shortCode } = req.params;
+      
+      // Get original URL
       const originalUrl = await UrlService.getOriginalUrl(shortCode);
       
       if (!originalUrl) {
-        return res.status(404).json({
-          error: 'URL not found',
-          message: 'The requested short URL does not exist or has expired'
+        return res.status(404).render('error', { 
+          message: 'URL not found or expired' 
         });
       }
       
-      // Increment click count asynchronously
-      UrlService.incrementClickCount(shortCode);
+      // Record analytics asynchronously (don't block redirect)
+      AnalyticsService.recordClick(shortCode, req).catch(err => 
+        logger.error('Analytics recording failed:', err)
+      );
       
-      // Redirect to original URL
+      // Increment click count asynchronously
+      UrlService.incrementClickCount(shortCode).catch(err =>
+        logger.error('Click count update failed:', err)
+      );
+      
+      // Perform redirect
       res.redirect(301, originalUrl);
     } catch (error) {
       next(error);
