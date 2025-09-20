@@ -12,19 +12,21 @@ class AnalyticsService {
 
       const analyticsData = {
         shortCode,
-        ipAddress: ip,
+        ipAddress: this.hashIP(ip), // Privacy: hash IPs
         userAgent: req.get('User-Agent'),
-        referrer: req.get('Referrer') || null,
+        referrer: req.get('Referrer') || 'direct',
         country: geo?.country || 'Unknown',
         city: geo?.city || 'Unknown',
         browser: agent.family || 'Unknown',
         os: agent.os.family || 'Unknown',
-        device: agent.device.family || 'Unknown'
+        device: this.getDeviceType(agent)
       };
 
-      await Analytics.recordClick(analyticsData);
+      // Batch analytics to avoid performance impact
+      await this.batchAnalytics(analyticsData);
     } catch (error) {
-      logger.error('Error recording analytics', error);
+      logger.error('Analytics recording failed:', error);
+      // Don't throw - analytics shouldn't break core functionality
     }
   }
 
